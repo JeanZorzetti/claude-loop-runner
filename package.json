@@ -1,0 +1,15 @@
+{
+  "name": "claude-loop-runner",
+  "version": "0.1.0",
+  "description": "Unattended loop that drives the Claude Code CLI against a file-based macro plan until the project is done.",
+  "type": "module",
+  "bin": {
+    "claude-loop-runner": "./src/runner.mjs"
+  },
+  "scripts": {
+    "ui": "node src/ui.mjs"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
