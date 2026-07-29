@@ -1,0 +1,402 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>claude-loop-runner — run Claude Code unattended, without growing context</title>
+<meta name="description" content="Runs the Claude Code CLI in a loop against a file-based plan. Every iteration is a fresh claude --print call, so context never grows. Long-term memory lives in two files, not in the conversation.">
+<meta property="og:title" content="claude-loop-runner — run Claude Code unattended">
+<meta property="og:description" content="Every iteration is a fresh, non-interactive call. The plan and the state live in two files inside your repo, so the conversation never has to remember anything.">
+<meta property="og:type" content="website">
+<meta name="theme-color" content="#E4E7E6">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' fill='%23E4E7E6'/><path d='M8 20V12M16 20V12M24 20V12' stroke='%23B0442A' stroke-width='4'/></svg>">
+<style>
+  :root{
+    --ground:#E4E7E6; --panel:#EDEFEE; --ink:#12171A; --muted:#69747A;
+    --rule:#C9CFCD; --signal:#B0442A; --warn:#A96A11; --ok:#1F6F5C; --dim:#8C949A;
+    --mono:ui-monospace,"Cascadia Mono","SF Mono","Roboto Mono",Menlo,Consolas,monospace;
+    --sans:ui-sans-serif,system-ui,"Segoe UI",Inter,Helvetica,Arial,sans-serif;
+  }
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{margin:0;background:var(--ground);color:var(--ink);font-family:var(--sans);font-size:16px;line-height:1.6}
+  a{color:inherit}
+  :focus-visible{outline:2px solid var(--signal);outline-offset:3px}
+  .wrap{max-width:1080px;margin:0 auto;padding:0 24px}
+
+  .strip{border-bottom:1px solid var(--ink);background:var(--ground);position:sticky;top:0;z-index:10}
+  .strip .wrap{
+    display:flex;flex-wrap:wrap;gap:0 28px;align-items:baseline;
+    font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;
+    padding:10px 24px;
+  }
+  .strip b{font-weight:700;letter-spacing:.1em}
+  .strip span{color:var(--muted)}
+  .strip span i{font-style:normal;color:var(--ink)}
+  .live::before{
+    content:"";display:inline-block;width:6px;height:6px;border-radius:50%;
+    background:var(--signal);margin-right:7px;vertical-align:middle;animation:pulse 2.4s ease-in-out infinite;
+  }
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.25}}
+
+  .hero{padding:88px 0 24px}
+  .eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:var(--signal);margin:0 0 22px}
+  h1{
+    font-family:var(--mono);font-weight:500;font-size:clamp(2.5rem,7.6vw,5.6rem);
+    line-height:.95;letter-spacing:-.045em;margin:0 0 26px;max-width:15ch;
+  }
+  h1 em{font-style:normal;color:var(--signal)}
+  .lede{font-size:clamp(1.05rem,2.1vw,1.3rem);max-width:58ch;margin:0 0 14px;color:#2B3336}
+  .sub{max-width:58ch;color:var(--muted);margin:0}
+  .sub code{font-family:var(--mono);font-size:.92em}
+
+  /* ── signature: two runners side by side, only one keeps its context flat ── */
+  .rig{margin:56px 0 0;border:1px solid var(--ink);background:var(--panel)}
+  .rig-head{
+    display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;
+    padding:12px 18px;border-bottom:1px solid var(--ink);
+    font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;
+  }
+  .rig-head em{font-style:normal;color:var(--muted)}
+  .lanes{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--rule)}
+  .lane{background:var(--panel);padding:20px 18px 22px}
+  .lane h3{
+    margin:0 0 3px;font-family:var(--mono);font-size:13px;font-weight:600;letter-spacing:-.01em;
+  }
+  .lane .how{margin:0 0 18px;font-size:12.5px;color:var(--muted);font-family:var(--mono)}
+  .meter{height:112px;display:flex;align-items:flex-end;gap:3px}
+  .meter b{
+    flex:1;display:block;background:var(--dim);min-height:2px;
+    transition:height .45s cubic-bezier(.2,.7,.3,1);
+  }
+  .lane.flat .meter b{background:var(--ok)}
+  .lane.grow .meter b{background:var(--signal)}
+  .lane.grow .meter b.over{background:repeating-linear-gradient(135deg,var(--signal) 0 4px,#D98D79 4px 8px)}
+  .read{
+    display:flex;justify-content:space-between;gap:12px;margin-top:12px;padding-top:10px;
+    border-top:1px solid var(--rule);font-family:var(--mono);font-size:12px;
+  }
+  .read u{text-decoration:none;color:var(--muted)}
+  .read s{text-decoration:none;font-variant-numeric:tabular-nums;font-weight:600}
+  .lane.grow .read s{color:var(--signal)}
+  .lane.flat .read s{color:var(--ok)}
+  .rig-foot{
+    padding:11px 18px;border-top:1px solid var(--ink);font-family:var(--mono);font-size:11px;
+    color:var(--muted);display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;
+  }
+  .rig-foot i{font-style:normal;color:var(--ink)}
+
+  section{padding:76px 0 4px}
+  h2{font-family:var(--mono);font-weight:500;font-size:clamp(1.5rem,3.4vw,2.1rem);letter-spacing:-.02em;margin:0 0 8px}
+  .kicker{font-family:var(--mono);font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);margin:0 0 14px}
+  .say{max-width:64ch;margin:0 0 34px}
+  .say strong{font-weight:600}
+  .say code,.step code,.block code,li code{font-family:var(--mono);font-size:.9em;background:#DADEDD;padding:1px 5px}
+
+  /* ── the two files that are the actual memory ── */
+  .files{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--ink);border:1px solid var(--ink)}
+  .file{background:var(--panel);padding:0}
+  .file header{
+    padding:11px 16px;border-bottom:1px solid var(--rule);
+    font-family:var(--mono);font-size:12.5px;font-weight:600;
+    display:flex;justify-content:space-between;gap:12px;
+  }
+  .file header em{font-style:normal;font-weight:400;color:var(--muted);font-size:11px;letter-spacing:.08em;text-transform:uppercase}
+  .file pre{margin:0;padding:16px;border:0;background:none;font-size:12.5px;line-height:1.7}
+  .file .who{padding:10px 16px;border-top:1px solid var(--rule);font-family:var(--mono);font-size:11px;color:var(--muted)}
+
+  /* ── iteration: a real sequence, so it is numbered ── */
+  ol.steps{list-style:none;margin:0;padding:0;border-top:1px solid var(--ink);counter-reset:s}
+  ol.steps li{
+    display:grid;grid-template-columns:52px 1fr;gap:20px;padding:16px 0;border-bottom:1px solid var(--rule);
+  }
+  ol.steps li::before{
+    counter-increment:s;content:counter(s,decimal-leading-zero);
+    font-family:var(--mono);font-size:12px;color:var(--signal);letter-spacing:.06em;padding-top:2px;
+  }
+  ol.steps h3{margin:0 0 4px;font-size:15px;font-weight:600}
+  ol.steps p{margin:0;font-size:14px;color:var(--muted);line-height:1.5}
+
+  /* ── hard blocks ── */
+  .blocks{border-top:1px solid var(--ink)}
+  .block{display:grid;grid-template-columns:230px 1fr;gap:24px;padding:15px 0;border-bottom:1px solid var(--rule);align-items:baseline}
+  .block .what{font-family:var(--mono);font-size:13.5px;font-weight:600}
+  .block .what::before{
+    content:"blocked";display:inline-block;margin-right:10px;padding:1px 6px;
+    font-size:10px;letter-spacing:.1em;text-transform:uppercase;font-weight:500;
+    color:var(--ground);background:var(--signal);vertical-align:2px;
+  }
+  .block.gate .what::before{content:"gate";background:var(--ink)}
+  .block p{margin:0;font-size:14px;color:var(--muted);line-height:1.5}
+
+  pre{
+    font-family:var(--mono);font-size:13px;line-height:1.75;margin:0;padding:20px;
+    border:1px solid var(--ink);background:var(--panel);overflow-x:auto;
+  }
+  .c{color:var(--muted)}
+  .k{color:var(--signal)}
+  .cta{
+    display:inline-block;margin-top:28px;font-family:var(--mono);font-size:13px;letter-spacing:.06em;
+    text-transform:uppercase;text-decoration:none;border:1px solid var(--ink);padding:13px 22px;
+    background:var(--ink);color:var(--ground);
+  }
+  .cta:hover{background:var(--signal);border-color:var(--signal)}
+
+  footer{margin-top:84px;border-top:1px solid var(--ink);padding:22px 0 60px}
+  footer .wrap{display:flex;justify-content:space-between;gap:20px;flex-wrap:wrap;font-family:var(--mono);font-size:11.5px;letter-spacing:.06em;color:var(--muted)}
+  footer a{color:var(--ink);text-decoration:none;border-bottom:1px solid var(--rule)}
+  footer a:hover{border-bottom-color:var(--signal);color:var(--signal)}
+
+  @media (max-width:820px){
+    .lanes,.files{grid-template-columns:1fr}
+    .block{grid-template-columns:1fr;gap:6px}
+    ol.steps li{grid-template-columns:36px 1fr;gap:14px}
+  }
+  @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+
+<div class="strip">
+  <div class="wrap">
+    <b>claude-loop-runner</b>
+    <span class="live"><i>unattended</i></span>
+    <span>state <i>2 files</i></span>
+    <span>branch <i>main only</i></span>
+    <span>iteration cap <i>mandatory</i></span>
+    <span>ROI&nbsp;Labs</span>
+  </div>
+</div>
+
+<header class="hero">
+  <div class="wrap">
+    <p class="eyebrow">Claude Code, running while you sleep</p>
+    <h1>The context <em>never grows</em>.</h1>
+    <p class="lede">
+      Every iteration is a fresh, non-interactive <code>claude --print</code> call. No
+      <code>--continue</code>, no <code>--resume</code>, nothing to <code>/clear</code>.
+    </p>
+    <p class="sub">
+      Long-term memory lives in two files inside the target repo — the plan you wrote, and the
+      state the run keeps rewriting. The conversation never has to remember anything, so it never
+      has to be trimmed.
+    </p>
+
+    <div class="rig">
+      <div class="rig-head">
+        <span>Same 12 tasks, two ways to run them</span>
+        <em id="iters">iteration 0</em>
+      </div>
+      <div class="lanes">
+        <div class="lane grow">
+          <h3>One long session</h3>
+          <p class="how">claude --continue</p>
+          <div class="meter" id="m-grow"></div>
+          <div class="read"><u>context in window</u><s id="r-grow">0%</s></div>
+        </div>
+        <div class="lane flat">
+          <h3>claude-loop-runner</h3>
+          <p class="how">claude --print, once per task</p>
+          <div class="meter" id="m-flat"></div>
+          <div class="read"><u>context in window</u><s id="r-flat">0%</s></div>
+        </div>
+      </div>
+      <div class="rig-foot">
+        <span>Both do the same work. Only one of them still fits at task 12.</span>
+        <span id="verdict">&nbsp;</span>
+      </div>
+    </div>
+  </div>
+</header>
+
+<section>
+  <div class="wrap">
+    <p class="kicker">Where the memory actually lives</p>
+    <h2>Two files, in your repo</h2>
+    <p class="say">
+      You write <code>macro_plan.md</code> by hand, once — scope, architecture, task list. The run
+      writes <code>current_state.md</code> after every iteration. Tag a task <code>[plan]</code> and
+      it gets <code>--effort high</code>; tag it <code>[build]</code> and it gets low or medium.
+      That tag is how you decide, in advance, how much deliberation each step deserves.
+    </p>
+    <div class="files">
+      <div class="file">
+        <header><span>macro_plan.md</span><em>you write it</em></header>
+<pre><span class="c">## Scope</span>
+Ship the export endpoint.
+
+<span class="c">## Tasks</span>
+- <span class="k">[plan]</span>  Decide the payload shape
+- <span class="k">[build]</span> Add the route
+- <span class="k">[build]</span> Cover it with a test</pre>
+        <p class="who">Read at the start of every iteration. Never rewritten by the run.</p>
+      </div>
+      <div class="file">
+        <header><span>current_state.md</span><em>the run writes it</em></header>
+<pre>status: <span class="k">in_progress</span>
+next_effort: medium
+
+<span class="c">## Done</span>
+- Payload shape decided: NDJSON
+
+<span class="c">## Next</span>
+- Add the route at /export</pre>
+        <p class="who">Rewritten every iteration. This is the whole handoff between calls.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <p class="kicker">One iteration</p>
+    <h2>Six things, in this order</h2>
+    <p class="say">
+      Each step gates the next, which is why the order is worth stating.
+    </p>
+    <ol class="steps">
+      <li><div>
+        <h3>Confirm <code>main</code> is checked out</h3>
+        <p>If the target repo is on any other branch, the run errors out instead of guessing.</p>
+      </div></li>
+      <li><div>
+        <h3>Read <code>current_state.md</code></h3>
+        <p>Picks up <code>status</code> and <code>next_effort</code>. Seeded automatically on the first run.</p>
+      </div></li>
+      <li><div>
+        <h3>Pick an account that isn't cooling</h3>
+        <p>Calls <code>claude --print</code> with that account's token and the effort the task asked for.</p>
+      </div></li>
+      <li><div>
+        <h3>On a rate limit, rotate — don't spend the iteration</h3>
+        <p>The banner is detected whether it comes back as a non-zero exit or as ordinary stdout with exit 0. That account goes on cooldown and the same iteration retries on the next one. If every account is cooling, the run sleeps until the earliest reset.</p>
+      </div></li>
+      <li><div>
+        <h3>Rebase on <code>origin/main</code>, then push</h3>
+        <p>The same sync runs before each iteration too, so work never builds on a stale tree. A rebase conflict stops the loop for a human.</p>
+      </div></li>
+      <li><div>
+        <h3>Stop on <code>done</code>, on <code>blocked</code>, or at the cap</h3>
+        <p><code>blocked</code> is a first-class ending, not a failure — it means a human needs to look.</p>
+      </div></li>
+    </ol>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <p class="kicker">Safety, baked in</p>
+    <h2>What it will not do</h2>
+    <p class="say">
+      Every commit lands on <code>main</code> and is pushed immediately — deliberate, since 2026-07.
+      If the target repo auto-deploys on push, each iteration reaches production with no human review
+      in between. <strong>There is no branch cushion.</strong> These are the guardrails that replaced it,
+      and they are not configurable.
+    </p>
+    <div class="blocks">
+      <div class="block">
+        <span class="what">git push --force</span>
+        <p>Hard-blocked through <code>--disallowedTools</code>, whatever <code>--permission-mode</code> says.</p>
+      </div>
+      <div class="block">
+        <span class="what">git reset --hard</span>
+        <p>Same block. History the run didn't write is not the run's to discard.</p>
+      </div>
+      <div class="block gate">
+        <span class="what">any branch but main</span>
+        <p>Refuses to start, so it can't quietly push to whichever branch you happened to leave checked out.</p>
+      </div>
+      <div class="block gate">
+        <span class="what">--max-iterations</span>
+        <p>Required. There is no unlimited default, so a badly-specified task can't burn a weekly quota across every account overnight.</p>
+      </div>
+      <div class="block gate">
+        <span class="what">status: blocked</span>
+        <p>Stops the loop instead of forcing progress.</p>
+      </div>
+    </div>
+    <p class="say" style="margin-top:34px">
+      Review the scope in <code>macro_plan.md</code> before a run — not the diff after.
+    </p>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <p class="kicker">Run it</p>
+    <h2>Node, a plan, and at least one account</h2>
+    <p class="say">
+      Point the pool at one token or at several. Several is the whole reason the cooldown logic
+      exists: when one account hits its limit, the run keeps going on the next instead of stopping
+      for five hours.
+    </p>
+<pre><span class="c"># one account</span>
+export CLAUDE_CODE_OAUTH_TOKEN=...
+
+<span class="c"># or a pool — the run rotates when one starts cooling</span>
+export CLAUDE_CODE_OAUTH_TOKENS=tok1,tok2,tok3
+
+node src/runner.mjs <span class="k">"C:\path\to\target-repo"</span> --max-iterations 20
+
+<span class="c"># optional local UI, bound to 127.0.0.1 only</span>
+npm run ui   <span class="c"># → http://127.0.0.1:4517</span></pre>
+    <a class="cta" href="https://github.com/JeanZorzetti/claude-loop-runner">Read the code on GitHub</a>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <span>claude-loop-runner · a <a href="https://roilabs.com.br">ROI Labs</a> tool</span>
+    <span><a href="https://github.com/JeanZorzetti/claude-loop-runner">github.com/JeanZorzetti/claude-loop-runner</a></span>
+  </div>
+</footer>
+
+<script>
+// Signature: the same 12 tasks, run both ways. One window fills up; the other doesn't.
+(function () {
+  var BARS = 12;
+  var grow = document.getElementById("m-grow");
+  var flat = document.getElementById("m-flat");
+  if (!grow || !flat) return;
+
+  var rGrow = document.getElementById("r-grow");
+  var rFlat = document.getElementById("r-flat");
+  var iters = document.getElementById("iters");
+  var verdict = document.getElementById("verdict");
+  var reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  var gb = [], fb = [];
+  for (var b = 0; b < BARS; b++) {
+    var g = document.createElement("b"), f = document.createElement("b");
+    grow.appendChild(g); flat.appendChild(f); gb.push(g); fb.push(f);
+  }
+
+  // A single session accumulates every turn; a fresh --print call re-reads two small files.
+  var growPct = [9, 17, 26, 34, 43, 52, 61, 70, 79, 88, 96, 100];
+  var flatPct = [11, 9, 12, 10, 11, 13, 10, 12, 11, 10, 12, 11];
+
+  function paint(n) {
+    for (var j = 0; j < BARS; j++) {
+      var on = j < n;
+      gb[j].style.height = on ? growPct[j] + "%" : "2px";
+      fb[j].style.height = on ? flatPct[j] + "%" : "2px";
+      gb[j].className = on && growPct[j] >= 96 ? "over" : "";
+    }
+    var i = Math.max(0, n - 1);
+    iters.textContent = "iteration " + n + " / " + BARS;
+    rGrow.textContent = n ? growPct[i] + "%" : "0%";
+    rFlat.textContent = n ? flatPct[i] + "%" : "0%";
+    verdict.textContent = n >= BARS ? "one session is out of room · the runner is on task 13" : "\u00a0";
+  }
+
+  var n = 0;
+  paint(0);
+  if (reduce) { paint(BARS); return; }
+  setInterval(function () {
+    n = n >= BARS ? 0 : n + 1;
+    paint(n);
+  }, 780);
+})();
+</script>
+</body>
+</html>
