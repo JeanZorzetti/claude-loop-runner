@@ -30,8 +30,9 @@
     font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;
     padding:7px 24px;
   }
-  .strip b{font-weight:700;letter-spacing:.1em;display:inline-flex;align-items:center;gap:9px}
-  .strip .mark{height:42px;width:auto;color:var(--signal)}
+  .strip b{font-weight:700;letter-spacing:.1em;display:inline-flex;align-items:center;gap:12px;font-size:18px;line-height:1;margin-right:8px}
+  /* -2px optico: o runner saliente estica a bbox pra cima, entao o centro do anel cai abaixo do centro da caixa */
+  .strip .mark{height:42px;width:auto;color:var(--signal);margin-top:-2px}
   .strip span{color:var(--muted)}
   .strip span i{font-style:normal;color:var(--ink)}
   .live::before{
