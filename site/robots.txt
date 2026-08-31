@@ -1,4 +1,44 @@
+# claude-loop-runner — everything here is public documentation.
+
 User-agent: *
+Allow: /
+
+# Answer engines. Being cited requires being read: these are allowed on purpose,
+# and the training agent is the same access as the live-retrieval agent.
+User-agent: GPTBot
+Allow: /
+
+User-agent: OAI-SearchBot
+Allow: /
+
+User-agent: ChatGPT-User
+Allow: /
+
+User-agent: ClaudeBot
+Allow: /
+
+User-agent: Claude-User
+Allow: /
+
+User-agent: Claude-SearchBot
+Allow: /
+
+User-agent: PerplexityBot
+Allow: /
+
+User-agent: Perplexity-User
+Allow: /
+
+User-agent: Google-Extended
+Allow: /
+
+User-agent: GoogleOther
+Allow: /
+
+User-agent: Applebot-Extended
+Allow: /
+
+User-agent: cohere-ai
 Allow: /
 
 Sitemap: https://claudeloop.roilabs.com.br/sitemap.xml

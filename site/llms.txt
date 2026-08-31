@@ -1,0 +1,64 @@
+# claude-loop-runner
+
+> A Node CLI that drives the Claude Code CLI in an unattended loop against a
+> plan you keep in a file. Every iteration is a fresh `claude --print` call, so
+> the context window never grows across a long run. Long-term memory lives in
+> two markdown files inside the target repository, not in the conversation.
+
+Built and used in production by ROI Labs (https://roilabs.com.br). Source is
+public at https://github.com/JeanZorzetti/claude-loop-runner. Free, no account
+or service of its own — it runs against your existing Claude Code CLI login.
+
+## What problem it solves
+
+A single long Claude Code session accumulates every turn it has ever taken.
+Around task ten or twelve of a multi-day plan, the window is full and the run
+either degrades or has to be cleared, losing the thread. claude-loop-runner
+never lets that happen: each task starts a new non-interactive process that
+reads only two small files, so token usage per iteration stays roughly flat no
+matter how long the plan is.
+
+## How it works
+
+- `macro_plan.md` — you write it once, by hand: scope, architecture, ordered
+  task list. The run reads it every iteration and never rewrites it.
+- `current_state.md` — the run rewrites it after every iteration. YAML
+  frontmatter carries `status` (`in_progress` | `done` | `blocked`),
+  `next_effort` (`low` | `medium` | `high`), and `iteration`. This file is the
+  entire handoff between one call and the next.
+- Tag a task `[low]`, `[medium]` or `[high]` in the plan and the runner passes
+  that to `claude --effort`, so how much deliberation each step gets is decided
+  in advance, in writing.
+- One iteration: confirm `main` is checked out → read `current_state.md` →
+  pick a token that is not on cooldown → call `claude --print` → on a rate-limit
+  banner, put that account on cooldown and retry the same iteration on the next
+  token → rebase on `origin/main` and push → stop on `done`, on `blocked`, or at
+  the iteration cap.
+
+## Safety model
+
+Every commit lands on `main` and is pushed immediately — a deliberate choice
+made in July 2026, not an oversight. There is no branch or worktree cushion, so
+if the target repository auto-deploys on push, each iteration reaches production
+with no human review in between. The guardrails that replaced the cushion are
+not configurable: `git push --force` and `git reset --hard` are blocked through
+`--disallowedTools`; the run refuses to start on any branch but `main`;
+`--max-iterations` is required with no unlimited default; and `status: blocked`
+is a first-class ending that stops the loop for a human instead of forcing
+progress. Review the scope in `macro_plan.md` before a run, not the diff after.
+
+## Running it
+
+Requires Node 18 or newer and a Claude Code CLI login. Set
+`CLAUDE_CODE_OAUTH_TOKEN` for a single account, or `CLAUDE_CODE_OAUTH_TOKENS`
+with a comma-separated pool — the pool is the reason the cooldown logic exists,
+since a run can keep going on the next account instead of sleeping five hours.
+
+    node src/runner.mjs "/path/to/target-repo" --max-iterations 20
+    npm run ui   # optional local UI on http://127.0.0.1:4517, loopback only
+
+## Links
+
+- Landing page: https://claudeloop.roilabs.com.br/
+- Source code: https://github.com/JeanZorzetti/claude-loop-runner
+- Maintainer: ROI Labs — https://roilabs.com.br
