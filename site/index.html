@@ -26,12 +26,12 @@
 
   .strip{border-bottom:1px solid var(--ink);background:var(--ground);position:sticky;top:0;z-index:10}
   .strip .wrap{
-    display:flex;flex-wrap:wrap;gap:0 28px;align-items:baseline;
+    display:flex;flex-wrap:wrap;gap:0 28px;align-items:center;
     font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;
-    padding:10px 24px;
+    padding:7px 24px;
   }
-  .strip b{font-weight:700;letter-spacing:.1em}
-  .strip .mark{height:14px;width:auto;color:var(--signal);vertical-align:-3px;margin-right:2px}
+  .strip b{font-weight:700;letter-spacing:.1em;display:inline-flex;align-items:center;gap:9px}
+  .strip .mark{height:42px;width:auto;color:var(--signal)}
   .strip span{color:var(--muted)}
   .strip span i{font-style:normal;color:var(--ink)}
   .live::before{
