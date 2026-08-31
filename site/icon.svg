@@ -1,0 +1,16 @@
+<!-- Favicon: mesma receita da marca com N=8, kerf 5, anel mais gordo (ri=12 ro=30).
+     A textura de 12 aduelas empastela abaixo de 24px; 8 aguentam 16px. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="claude-loop-runner">
+  <rect width="64" height="64" fill="#E4E7E6"/>
+  <g fill="#B0442A">
+  <path d="M40.77 3.31A30 30 0 0 1 55.88 13.84L41.55 24.74A12 12 0 0 0 35.51 20.52Z"/>
+  <path d="M57.37 15.99A30 30 0 0 1 61.94 33.83L43.98 32.73A12 12 0 0 0 42.15 25.6Z"/>
+  <path d="M61.67 36.43A30 30 0 0 1 53.49 52.93L40.6 40.37A12 12 0 0 0 43.87 33.77Z"/>
+  <path d="M51.58 54.73A30 30 0 0 1 34.61 61.89L33.05 43.95A12 12 0 0 0 39.83 41.09Z"/>
+  <path d="M32 62A30 30 0 0 1 14.47 56.35L24.99 41.74A12 12 0 0 0 32 44Z"/>
+  <path d="M12.42 54.73A30 30 0 0 1 2.83 39L20.33 34.8A12 12 0 0 0 24.17 41.09Z"/>
+  <path d="M2.33 36.43A30 30 0 0 1 5.33 18.26L21.33 26.51A12 12 0 0 0 20.13 33.77Z"/>
+  <path d="M6.63 15.99A30 30 0 0 1 20.76 4.18L27.5 20.87A12 12 0 0 0 21.85 25.6Z"/>
+  <path d="M6.53 12.63A32 32 0 0 1 22.64 1.4L29.66 24.35A8 8 0 0 0 25.63 27.16Z"/>
+  </g>
+</svg>

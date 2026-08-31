@@ -1,0 +1,23 @@
+<!-- Marca gerada do dado do runner, nada posicionado a mao.
+     Receita: grade 64x64, centro (32,32). 12 aduelas = 12 iteracoes concluidas,
+     setor anular ri=15 ro=28, unit=(360-GAP)/12, kerf de 4deg entre elas
+     (cada iteracao e uma chamada solta: sem --continue/--resume).
+     GAP=30deg no topo = o contexto que nao acumula: o ciclo nunca fecha em si mesmo.
+     A 13a aduela e o runner em voo: mesma unidade, ri=11 ro=32, saliente por dentro e por fora.
+     viewBox recortado na bbox real (3 0 58 61) - sem isso a marca fica pequena na caixa.
+     Mudou o numero de iteracoes? Mude N e recalcule unit; o kerf e o GAP ficam. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="3 0 58 61" fill="currentColor" role="img" aria-label="claude-loop-runner">
+  <path d="M39.25 4.95A28 28 0 0 1 49.43 10.09L41.34 20.26A15 15 0 0 0 35.88 17.51Z"/>
+  <path d="M50.92 11.36A28 28 0 0 1 57.58 20.61L45.7 25.9A15 15 0 0 0 42.13 20.94Z"/>
+  <path d="M58.31 22.42A28 28 0 0 1 59.95 33.71L46.97 32.92A15 15 0 0 0 46.1 26.87Z"/>
+  <path d="M59.76 35.65A28 28 0 0 1 56 46.42L44.86 39.73A15 15 0 0 0 46.87 33.96Z"/>
+  <path d="M54.94 48.06A28 28 0 0 1 46.63 55.87L39.84 44.79A15 15 0 0 0 44.29 40.6Z"/>
+  <path d="M44.93 56.84A28 28 0 0 1 33.95 59.93L33.05 46.96A15 15 0 0 0 38.93 45.31Z"/>
+  <path d="M32 60A28 28 0 0 1 20.84 57.68L26.02 45.76A15 15 0 0 0 32 47Z"/>
+  <path d="M19.07 56.84A28 28 0 0 1 10.24 49.62L20.34 41.44A15 15 0 0 0 25.07 45.31Z"/>
+  <path d="M9.06 48.06A28 28 0 0 1 4.56 37.58L17.3 34.99A15 15 0 0 0 19.71 40.6Z"/>
+  <path d="M4.24 35.65A28 28 0 0 1 5.08 24.28L17.58 27.87A15 15 0 0 0 17.13 33.96Z"/>
+  <path d="M5.69 22.42A28 28 0 0 1 11.69 12.73L21.12 21.67A15 15 0 0 0 17.9 26.87Z"/>
+  <path d="M13.08 11.36A28 28 0 0 1 22.88 5.53L27.12 17.82A15 15 0 0 0 21.87 20.94Z"/>
+  <path d="M12.08 6.96A32 32 0 0 1 23.72 1.09L29.15 21.37A11 11 0 0 0 25.15 23.39Z"/>
+</svg>
